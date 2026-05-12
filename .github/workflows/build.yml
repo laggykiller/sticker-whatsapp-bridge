@@ -1,0 +1,68 @@
+name: Compile Bun Binary
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  createrelease:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+      if: startsWith(github.ref, 'refs/tags/v')
+      with:
+        submodules: recursive
+    - name: Create Release
+      uses: ncipollo/release-action@v1
+      if: startsWith(github.ref, 'refs/tags/v')
+      with:
+        token: "${{ secrets.GITHUB_TOKEN }}"
+        name: Release ${{ github.ref_name }}
+
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        include:
+          - target: linux-x64
+            suffix: ""
+          - target: linux-arm64
+            suffix: ""
+          - target: windows-x64
+            suffix: ".exe"
+          - target: windows-arm64
+            suffix: ".exe"
+          - target: darwin-x64
+            suffix: ""
+          - target: darwin-arm64
+            suffix: ""
+          - target: linux-x64-musl
+            suffix: ""
+          - target: linux-arm64-musl
+            suffix: ""
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Compile Executable
+        run: bun build ./src/swb.ts --target bun-${{matrix.target}} --outfile swb-${{github.ref_name}}-${{matrix.target}}${{matrix.suffix}} --compile --minify --external sharp
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: ./swb-${{github.ref_name}}-${{matrix.target}}${{matrix.suffix}}

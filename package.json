@@ -1,0 +1,27 @@
+{
+  "scripts": {
+    "prettify": "prettier --write src"
+  },
+  "dependencies": {
+    "baileys": "github:laggykiller/InfiniteAPI#master",
+    "jimp": "^1.6.1",
+    "jszip": "^3.10.1",
+    "long": "^5.3.2",
+    "protobufjs": "^8.0.3",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.34.5"
+  },
+  "devDependencies": {
+    "@types/long": "^5.0.0",
+    "@types/qrcode": "^1.5.6",
+    "@types/ws": "^8.18.1",
+    "prettier": "^3.8.3",
+    "tsc-esm-fix": "^3.1.2",
+    "typescript": "^6.0.3"
+  },
+  "trustedDependencies": [
+    "baileys",
+    "protobufjs",
+    "sharp"
+  ]
+}
