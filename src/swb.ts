@@ -24,7 +24,7 @@ import path from "path";
 import pino from "pino";
 import QRCode from "qrcode";
 
-const VERSION = "v1.0.0";
+const VERSION = "v1.1.0";
 process.env.BAILEYS_LOG = process.env.BAILEYS_LOG ?? "false";
 
 type WASocket = ReturnType<typeof makeWASocket>;
