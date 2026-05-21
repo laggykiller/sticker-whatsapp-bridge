@@ -16,6 +16,7 @@ import {
   readFileSync,
   rmSync,
   writeFile,
+  writeFileSync,
 } from "node:fs";
 import { pipeline } from "node:stream";
 import { parseArgs } from "node:util";
@@ -24,7 +25,7 @@ import pino from "pino";
 import QRCode from "qrcode";
 
 const VERSION = "v1.0.0";
-process.env.BAILEYS_LOG = process.env.BAILEYS_LOG ?? 'false'
+process.env.BAILEYS_LOG = process.env.BAILEYS_LOG ?? "false";
 
 type WASocket = ReturnType<typeof makeWASocket>;
 interface GenericJsonMsg {
@@ -36,6 +37,34 @@ interface StickerPackMeta {
   packDescription?: string;
   stickerPackId?: string;
   caption?: string;
+}
+interface OfficialStickerInfo {
+  "direct-path": string;
+  emojis: Array<string>;
+  "enc-file-hash": string;
+  "file-hash": string;
+  "file-size": number;
+  handle: string;
+  height: number;
+  "media-key": string;
+  mimetype: string;
+  preview_webp_id: string;
+  "sticker-hash-without-meta": string;
+  url: string;
+  width: number;
+}
+interface OfficialStickerPackInfo {
+  animated: number;
+  description: string;
+  "file-size": string;
+  "image-data-hash": string;
+  name: string;
+  "preview-image-ids": Array<string>;
+  publisher: string;
+  "sticker-pack-id": string;
+  stickers: Array<OfficialStickerInfo>;
+  "tray-image-id": string;
+  "tray-image-preview": string;
 }
 interface VersionJsonMsg extends GenericJsonMsg {
   event: "version";
@@ -496,6 +525,93 @@ async function recvStickerPack(
   }
 }
 
+async function recvStickerPackOfficial(
+  link: string,
+  cnt: number,
+  timestamp: number,
+) {
+  const linkParsed = new URL(link);
+  const packName = linkParsed.pathname.split("/").at(-1);
+  const packInfoURL = `https://static.whatsapp.net/sticker?lottie=1&cat=sticker_pack_data&id=${packName}&lg=en`;
+  const packInfoResp = await fetch(packInfoURL);
+  if (!packInfoResp.ok) {
+    error(`Failed to get metadata for ${packName}: ${packInfoResp.status}`);
+    return;
+  }
+  const fname = `${cnt}-${timestamp}.zip`;
+  const outPath = path.join(values.dest, fname);
+  createDir(values.dest);
+
+  let packInfo: Array<OfficialStickerPackInfo>;
+  try {
+    packInfo = await packInfoResp.json();
+  } catch (err) {
+    error(`Failed to get metadata for ${packName}: ${err}`);
+    return;
+  }
+
+  const meta = {
+    name: packInfo[0]["name"] ?? undefined,
+    publisher: packInfo[0]["publisher"] ?? undefined,
+    packDescription: packInfo[0]["description"] ?? undefined,
+    stickerPackId: packInfo[0]["sticker-pack-id"] ?? undefined,
+  } as StickerPackMeta;
+
+  const zipf = new JSZip();
+  const fetchPromises = packInfo[0].stickers!.map(async (sticker, idx) => {
+    const blob = await downloadContentFromMessage(
+      {
+        mediaKey: Buffer.from(sticker["media-key"], "base64"),
+        directPath: sticker["direct-path"],
+        url: `https://mmg.whatsapp.net${sticker["direct-path"]}`,
+      },
+      "sticker",
+      {},
+    );
+    zipf.file(
+      `${idx.toString().padStart(2, "0")}_${packInfo[0]["name"]}.${sticker["mimetype"].split("/").at(-1)}`,
+      blob,
+    );
+  });
+  fetchPromises.push(
+    (async () => {
+      const trayResp = await fetch(
+        `https://static.whatsapp.net/sticker?img=${packInfo[0]["tray-image-id"]}`,
+      );
+      zipf.file("tray.png", await trayResp.arrayBuffer());
+    })(),
+  );
+
+  try {
+    await Promise.all(fetchPromises);
+    const zipBlob = await zipf.generateAsync({ type: "blob" });
+    writeFileSync(outPath, Buffer.from(await zipBlob.arrayBuffer()));
+    console.log(
+      values.json
+        ? JSON.stringify({
+            event: "recv",
+            type: "pack",
+            ext: ".zip",
+            count: cnt,
+            fname: fname,
+            ...meta,
+          } as RecvPackJsonMsg)
+        : `Received #${cnt} ${fname}`,
+    );
+  } catch (err) {
+    console.error(`Failed to download ${packName}:`, err);
+  }
+
+  if (!values["no-write-meta"]) {
+    const metaPath = path.join(values.dest, `${cnt}-${timestamp}.meta`);
+    writeFile(metaPath, JSON.stringify(meta), "utf-8", (err) => {
+      if (err) {
+        error(`Failed to write ${metaPath}: ${err}`);
+      }
+    });
+  }
+}
+
 async function handleRecv(message: WAMessage, counter: Counter) {
   const timestamp = new Date().valueOf();
   if (message.message?.stickerMessage) {
@@ -513,6 +629,11 @@ async function handleRecv(message: WAMessage, counter: Counter) {
   }
   if (message.message?.stickerPackMessage) {
     recvStickerPack(message.message.stickerPackMessage, counter.cnt, timestamp);
+    counter.cnt += 1;
+  }
+  const text = message.message?.extendedTextMessage?.text;
+  if (text && text.startsWith("https://wa.me/stickerpack/")) {
+    recvStickerPackOfficial(text, counter.cnt, timestamp);
     counter.cnt += 1;
   }
 }
