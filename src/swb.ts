@@ -345,10 +345,7 @@ async function sendStickerPack(sock: WASocket, group: Group, fpath: string) {
     if (!file) continue;
     const buffer = await file.async("nodebuffer");
 
-    if (
-      (ftype === "wastickers" && relativePath.toLowerCase().endsWith("png")) ||
-      (ftype === "zip" && /^\d+$/.test(relativePath.slice(0, 2)) === false)
-    ) {
+    if (relativePath.toLowerCase().endsWith("png")) {
       cover = buffer;
     } else if (relativePath === "title.txt") {
       packName = await file.async("text");
@@ -361,6 +358,7 @@ async function sendStickerPack(sock: WASocket, group: Group, fpath: string) {
         emojis: emojiStr
           ? Array.from(segmenter.segment(emojiStr), (s) => s.segment)
           : undefined,
+        isLottie: file.name.endsWith(".was") ? true : false,
       });
     }
   }

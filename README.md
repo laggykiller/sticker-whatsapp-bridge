@@ -85,8 +85,8 @@ be sent to that group
 
 ### Format of `.zip` stickerpack
 - This is the format of stickerpack you download from `swb recv`
-- stickers as `<2-digit-number>_<...>.<webp|png>`, e.g. `00_xyzxyzxyz.webp` or `01_foobar.png`
-- cover in any name that does not start with 2-digit-number
+- stickers in webp format, any name acceptable
+- cover in png format, any name acceptable
 
 ### Format of emoji json
 If a sticker pack contains `00_xyzxyzxyz.webp` and `01_foobar.png`, emoji json should
