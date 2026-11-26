@@ -9,6 +9,7 @@ import makeWASocket, {
   useMultiFileAuthState,
   WAMessage,
 } from "baileys/src";
+import baileysVersionData from 'baileys/src/Defaults/baileys-version.json' with { type: 'json' }
 import JSZip from "jszip";
 import {
   createWriteStream,
@@ -24,7 +25,9 @@ import path from "path";
 import pino from "pino";
 import QRCode from "qrcode";
 
-const VERSION = "v1.0.0";
+const VERSION = "v1.1.1";
+const WEB_VERSION = baileysVersionData.version
+const WEB_VERSION_STR = WEB_VERSION.join('.')
 process.env.BAILEYS_LOG = process.env.BAILEYS_LOG ?? "false";
 
 type WASocket = ReturnType<typeof makeWASocket>;
@@ -119,6 +122,7 @@ const { values, positionals } = parseArgs({
     "auth-info": { type: "string", short: "a", default: "./auth_info_baileys" },
     platform: { type: "string", short: "f", default: "appropriate" },
     browser: { type: "string", short: "b", default: "Chrome" },
+    "web-version": { type: "string", short: "w", default: WEB_VERSION_STR },
     phone: { type: "string", short: "o" },
     path: { type: "string", short: "p", multiple: true },
     name: { type: "string", short: "n" },
@@ -152,6 +156,7 @@ OPTIONS:
   -f, --platform      Platform name
                       Choices: appropriate (Default), ubuntu, macOS, baileys, windows
   -b, --browser       Browser name (Default: Chrome)
+  -w, --web-version   Set WhatsApp Web Version (Default: ${WEB_VERSION_STR})
 
 OPTIONS (For login):
   -o, --phone         Phone number without plus sign or bracket
@@ -676,6 +681,7 @@ async function main() {
       creds: state.creds,
       keys: makeCacheableSignalKeyStore(state.keys, logger),
     },
+    version: values["web-version"].split(".").map(Number),
     browser: platform(values.browser),
     logger: logger,
     markOnlineOnConnect: false,
