@@ -1,7 +1,7 @@
 # sticker-whatsapp-bridge
 A CLI program for downloading and uploading WhatsApp stickers.
 
-Built with [Baileys](https://github.com/WhiskeySockets/Baileys).
+Built with [custom fork](https://github.com/laggykiller/InfiniteAPI) of [InfiniteAPI](https://github.com/rsalcara/InfiniteAPI), which is a fork of [Baileys](https://github.com/WhiskeySockets/Baileys).
 
 If you want a user-friendly GUI, checkout
 [sticker-convert](https://github.com/laggykiller/sticker-convert) which uses this project.
@@ -24,6 +24,7 @@ OPTIONS:
   -f, --platform      Platform name
                       Choices: appropriate (Default), ubuntu, macOS, baileys, windows
   -b, --browser       Browser name (Default: Chrome)
+  -w, --web-version   Set WhatsApp Web Version (Default: 2.3000.1056340093)
 
 OPTIONS (For login):
   -o, --phone         Phone number without plus sign or bracket
